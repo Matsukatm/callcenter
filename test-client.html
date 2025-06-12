@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Incoming Calls</title>
+  <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Live Call Feed</h1>
+  <ul id="calls"></ul>
+
+  <script>
+    const socket = io("http://localhost:4050");
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to WebSocket Server");
+    });
+
+    socket.on("incoming-call", (data) => {
+      console.log("📞 New Call:", data);
+
+      const list = document.getElementById("calls");
+      const item = document.createElement("li");
+      item.textContent = `Caller: ${data.caller}, Called: ${data.called}, Time: ${data.timestamp}`;
+      list.appendChild(item);
+    });
+  </script>
+</body>
+</html>

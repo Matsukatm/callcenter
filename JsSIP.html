@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web Call Client</title>
+</head>
+<body>
+  <h2>Softphone</h2>
+  <div id="status">Waiting...</div>
+  <script src="https://cdn.jsdelivr.net/npm/jssip@3/dist/jssip.min.js"></script>
+  <script>
+    const socket = new JsSIP.WebSocketInterface('wss://your-asterisk-domain:8089/ws');
+    const configuration = {
+      sockets: [socket],
+      uri: 'sip:webrtc_client@your-asterisk-domain',
+      password: 'yourpassword'
+    };
+
+    const ua = new JsSIP.UA(configuration);
+    ua.start();
+
+    ua.on('newRTCSession', function(e) {
+      const session = e.session;
+      if (session.direction === 'incoming') {
+        document.getElementById("status").innerText = "Incoming call from: " + session.remote_identity.uri;
+
+        session.answer({
+          mediaConstraints: { audio: true, video: false }
+        });
+      }
+    });
+
+    // Connect to WebSocket backend
+    const ws = new WebSocket("ws://your-node-backend-ip:4050");
+
+    ws.onmessage = function (message) {
+      const data = JSON.parse(message.data);
+      if (data.event === "incoming_call") {
+        alert("Incoming call from " + data.from);
+        // Optionally trigger JsSIP session here
+      }
+    };
+  </script>
+</body>
+</html>
