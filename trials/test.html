@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebRTC Phone</title>
+  <script src="https://cdn.jsdelivr.net/npm/jssip@3.9.0/dist/jssip.min.js"></script>
+</head>
+<body>
+  <h2>WebRTC Test</h2>
+  <button onclick="makeCall()">Call</button>
+  <button onclick="hangup()">Hang Up</button>
+
+  <script>
+    const socket = new JsSIP.WebSocketInterface('wss://your-freepbx-ip:8089/ws');
+    const configuration = {
+      sockets  : [ socket ],
+      uri      : 'sip:1001@your-freepbx-ip',
+      password : 'your-password',
+    };
+
+    const ua = new JsSIP.UA(configuration);
+    ua.start();
+
+    let session = null;
+
+    function makeCall() {
+      const eventHandlers = {
+        'progress': function(e){ console.log('call is in progress'); },
+        'failed': function(e){ console.log('call failed'); },
+        'ended': function(e){ console.log('call ended'); },
+        'confirmed': function(e){ console.log('call confirmed'); }
+      };
+
+      const options = {
+        eventHandlers    : eventHandlers,
+        mediaConstraints : { audio: true, video: false }
+      };
+
+      session = ua.call('sip:0709918001@your-freepbx-ip', options);
+    }
+
+    function hangup() {
+      if (session) session.terminate();
+    }
+  </script>
+</body>
+</html>

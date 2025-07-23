@@ -1,0 +1,5 @@
+# Upload only your source code and package files
+scp *.js *.json root@192.168.12.18:/usr/local/onfon_call_center/
+
+# Or exclude node_modules explicitly
+scp -r --exclude='node_modules' * root@192.168.12.18:/usr/local/onfon_call_center/
