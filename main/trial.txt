@@ -3,3 +3,351 @@ scp *.js *.json root@192.168.12.18:/usr/local/onfon_call_center/
 
 # Or exclude node_modules explicitly
 scp -r --exclude='node_modules' * root@192.168.12.18:/usr/local/onfon_call_center/
+
+================================================================================
+WEBSOCKET EVENTS DOCUMENTATION
+================================================================================
+
+// Event: "call_incoming"
+// Trigger: StasisStart → handleAgentCall()
+// Purpose: Show incoming call notification to agent
+
+io.emit("call_incoming", {
+  // Session identifiers
+  sessionId: "channel_123_1705312200000",
+  channelId: "PJSIP/1001-00000001", 
+  
+  // Agent information
+  agentId: "agent_uuid_789",
+  extension: "1001",
+  agentName: "John Doe",
+  
+  // Customer information  
+  customerNumber: "254712345678",
+  callerName: "Customer Name", // or "Unknown Caller"
+  
+  // Call metadata
+  callIndex: 1,           // Current call number for this agent
+  maxCalls: 3,           // Agent's max concurrent calls
+  callDirection: "inbound",
+  priority: "normal",
+  timestamp: "2024-01-15T10:30:00.000Z",
+  
+  // Available actions
+  canAnswer: true,
+  canReject: true,
+  canTransfer: true
+});
+
+
+
+
+
+
+// Event: "call_bridged_successfully" 
+// Trigger: ChannelEnteredBridge → onChannelEnteredBridge()
+// Purpose: Start call timer and show call controls
+
+io.emit("call_bridged_successfully", {
+  // Session identifiers
+  sessionId: "channel_123_1705312200000",
+  channelId: "PJSIP/1001-00000001",
+  bridgeId: "bridge_uuid_456",
+  
+  // Agent information
+  agentId: "agent_uuid_789", 
+  extension: "1001",
+  
+  // Customer information
+  customerNumber: "254712345678",
+  
+  // Call metadata
+  callIndex: 1,
+  connectedAt: "2024-01-15T10:30:15.000Z",
+  
+  // Timer control - CRITICAL FOR FRONTEND
+  startTimer: true,
+  timerStartTime: "2024-01-15T10:30:15.000Z",
+  serverTimestamp: 1705312215000, // Unix timestamp for sync
+  
+  // Available call controls
+  controls: {
+    mute: true,
+    hold: true, 
+    transfer: true,
+    hangup: true,
+    record: true,
+    conference: false // if not available
+  }
+});
+
+
+// Event: "customer_left_bridge"
+// Trigger: StasisEnd → stasisEnd() with customer disconnect detection  
+// Purpose: Auto-decline call and stop timer
+
+io.emit("customer_left_bridge", {
+  // Session identifiers
+  sessionId: "channel_123_1705312200000",
+  channelId: "PJSIP/1001-00000001", 
+  
+  // Agent information
+  agentId: "agent_uuid_789",
+  extension: "1001",
+  
+  // Customer information
+  customerNumber: "254712345678",
+  
+  // Disconnect details
+  leftAt: "2024-01-15T10:32:00.000Z",
+  reason: "customer_disconnected", // or "network_issue", "timeout"
+  
+  // Auto-decline info - CRITICAL FOR FRONTEND
+  autoDecline: true,
+  
+  // Call duration info
+  callDuration: 105,        // Seconds from bridge start to end
+  totalDuration: 125,       // Seconds from call start to end
+  wasConnected: true,       // Was call successfully bridged?
+  wasAnswered: true,        // Did agent answer before customer left?
+  
+  // Call summary
+  callIndex: 1,
+  bridgeId: "bridge_uuid_456" // if was bridged
+});
+
+
+// Event: "system_state"
+// Trigger: WebSocket connection established
+// Purpose: Initialize frontend with current system state
+
+socket.emit("system_state", {
+  // Extension states
+  extensionStates: {
+    "1001": {
+      agentId: "agent_uuid_789",
+      status: "available",     // "available", "on_call", "ringing", "offline"
+      agentName: "John Doe",
+      lastUpdate: "2024-01-15T10:30:00.000Z"
+    },
+    "1002": {
+      agentId: "agent_uuid_456", 
+      status: "on_call",
+      agentName: "Jane Smith",
+      lastUpdate: "2024-01-15T10:25:00.000Z"
+    }
+  },
+  
+  // Available agents
+  availableAgents: [
+    {
+      agentId: "agent_uuid_789",
+      extension: "1001", 
+      agentName: "John Doe"
+    }
+  ],
+  
+  // Agents with call capacity
+  agentsWithCapacity: [
+    {
+      agentId: "agent_uuid_789",
+      extension: "1001",
+      agentName: "John Doe", 
+      currentCalls: 0,
+      maxCalls: 3,
+      canTakeCall: true
+    },
+    {
+      agentId: "agent_uuid_456",
+      extension: "1002",
+      agentName: "Jane Smith",
+      currentCalls: 2, 
+      maxCalls: 3,
+      canTakeCall: true
+    }
+  ],
+  
+  // Currently active calls
+  activeCalls: [
+    {
+      sessionId: "channel_456_1705312100000",
+      channelId: "PJSIP/1002-00000002",
+      agentId: "agent_uuid_456",
+      extension: "1002", 
+      customerNumber: "254798765432",
+      callType: "agent_answered",
+      callIndex: 1,
+      startTime: "2024-01-15T10:25:00.000Z",
+      status: "connected"
+    }
+  ],
+  
+  timestamp: "2024-01-15T10:30:00.000Z"
+});
+
+
+// Event: "agent_status_updated"
+// Trigger: agentBridge.updateAgentStatus() → Enhanced Agent Bridge
+// Purpose: Update agent status indicators in real-time
+
+io.emit("agent_status_updated", {
+  // Agent information
+  agentId: "agent_uuid_789",
+  extension: "1001",
+  agentName: "John Doe",
+  
+  // Status information
+  status: "on_call",        // "available", "on_call", "ringing", "offline", "multi_call"
+  previousStatus: "available",
+  
+  // Call information (if on call)
+  activeCalls: [
+    {
+      channelId: "PJSIP/1001-00000001",
+      sessionId: "channel_123_1705312200000", 
+      startTime: "2024-01-15T10:30:15.000Z",
+      customerNumber: "254712345678"
+    }
+  ],
+  callCount: 1,             // Number of active calls
+  
+  // Timestamps
+  statusChangedAt: "2024-01-15T10:30:15.000Z",
+  lastUpdate: "2024-01-15T10:30:15.000Z",
+  
+  // Capacity information
+  capacity: {
+    current: 1,
+    max: 3,
+    canTakeCall: true
+  }
+});
+
+
+// Event: "system_stats"
+// Trigger: 30-second interval timer
+// Purpose: Update dashboard metrics
+
+io.emit("system_stats", {
+  // Call statistics
+  totalSessions: 5,         // Total active call sessions
+  activeAgents: 3,          // Agents currently handling calls
+  availableAgents: 2,       // Agents available for calls
+  avgCallsPerAgent: 1.7,    // Average calls per active agent
+  
+  // System health
+  systemHealth: {
+    status: "operational",   // "operational", "degraded", "down"
+    uptime: 86400,          // Seconds since system start
+    memoryUsage: {
+      used: 245760000,      // Bytes
+      total: 1073741824,    // Bytes  
+      percentage: 22.9
+    },
+    activeConnections: 8    // WebSocket connections
+  },
+  
+  // Performance metrics
+  performance: {
+    avgResponseTime: 150,   // Milliseconds
+    callsPerMinute: 12,     // Current call rate
+    peakConcurrentCalls: 8, // Highest concurrent calls today
+    successRate: 98.5       // Percentage of successful calls
+  },
+  
+  timestamp: "2024-01-15T10:30:00.000Z"
+});
+
+
+
+
+// Event: "incoming_queue_call"  
+// Trigger: StasisStart → handleIncomingQueueCall()
+// Purpose: Show queue call to supervisor for manual assignment
+
+io.emit("incoming_queue_call", {
+  // Session identifiers
+  sessionId: "queue_channel_789_1705312300000",
+  channelId: "PJSIP/trunk-00000003",
+  
+  // Customer information
+  customerNumber: "254798765432", 
+  callerName: "Queue Customer", // or "Unknown Caller"
+  
+  // Queue information
+  queuePosition: 1,           // Position in queue
+  estimatedWaitTime: 45,      // Seconds
+  queueNumber: "8000",        // Queue extension dialed
+  
+  // Available agents for assignment
+  availableAgents: [
+    {
+      agentId: "agent_uuid_789",
+      extension: "1001",
+      agentName: "John Doe",
+      currentCalls: 0,
+      maxCalls: 3
+    },
+    {
+      agentId: "agent_uuid_456", 
+      extension: "1002",
+      agentName: "Jane Smith",
+      currentCalls: 1,
+      maxCalls: 3
+    }
+  ],
+  
+  // Available actions
+  actions: {
+    assignToAgent: true,
+    setPriority: true,
+    transfer: true,
+    hangup: true
+  },
+  
+  timestamp: "2024-01-15T10:35:00.000Z"
+});
+
+
+
+
+ Critical Frontend Integration Points
+Timer Control:
+        call_bridged_successfully.timerStartTime → START TIMER
+        customer_left_bridge or call_ended_normally → STOP TIMER
+UI State Management:
+        call_incoming → Show notification
+        call_bridged_successfully → Show controls
+        agent_rejected_call → Hide notification
+        customer_left_bridge → Auto-decline UI
+        call_ended_normally → Show summary
+Real-time Updates:
+        agent_status_updated → Update agent status
+        system_stats → Update metrics
+        system_state → Initialize on connect
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+WebSocket Event Summary
+🚀 Events Your Backend Emits:
+Event	Trigger	Purpose
+incoming_call_for_agent	StasisStart →         handleAgentCall	             Show call notification to agent
+incoming_queue_call	StasisStart →             handleIncomingQueueCall	     Show queue call to supervisor
+call_state_changed	                          ChannelStateChange	         Update call progress indicators
+call_answered	                              ChannelEnteredBridge	         Show call controls, start timer
+call_ended	StasisEnd	                      Cleanup UI, show call summary
+agent_status_updated	                      Agent Bridge status change	  Update agent status indicators
+system_state	                              WebSocket connection	          Initialize frontend state
+system_stats	                              30-second interval	          Update dashboard metrics
